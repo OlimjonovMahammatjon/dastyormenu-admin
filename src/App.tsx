@@ -1,49 +1,56 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AppProvider, useApp } from './contexts/AppContext';
-import Layout from './components/Layout/Layout';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Orders from './pages/Orders';
-import Menu from './pages/Menu';
-import Staff from './pages/Staff';
-import More from './pages/More';
-import Customers from './pages/Customers';
-import Notifications from './pages/Notifications';
-import Settings from './pages/Settings';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuthStore } from './store/authStore';
+import { ToastProvider } from './lib/toast';
+import ManagerLayout from './components/layout/ManagerLayout';
+import LoginPage from './pages/manager/LoginPage';
+import DashboardPage from './pages/manager/DashboardPage';
+import OrdersPage from './pages/manager/OrdersPage';
+import MenuPage from './pages/manager/MenuPage';
+import TablesPage from './pages/manager/TablesPage';
+import StaffPage from './pages/manager/StaffPage';
+import SettingsPage from './pages/manager/SettingsPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { state } = useApp();
-  return state.currentUser ? <>{children}</> : <Navigate to="/login" />;
-};
+  const { user, isLoading } = useAuthStore();
 
-const AppContent: React.FC = () => {
-  const { state } = useApp();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0F0F0F] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-[#F59E0B] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
-  return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={state.currentUser ? <Navigate to="/" /> : <Login />} />
-        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route index element={<Dashboard />} />
-          <Route path="orders" element={<Orders />} />
-          <Route path="menu" element={<Menu />} />
-          <Route path="staff" element={<Staff />} />
-          <Route path="more" element={<More />} />
-          <Route path="customers" element={<Customers />} />
-          <Route path="notifications" element={<Notifications />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
-      </Routes>
-    </Router>
-  );
+  return user ? <>{children}</> : <Navigate to="/login" replace />;
 };
 
 const App: React.FC = () => {
+  const { user, loadProfile } = useAuthStore();
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={user ? <Navigate to="/manager" replace /> : <LoginPage />} />
+          
+          <Route path="/manager" element={<ProtectedRoute><ManagerLayout /></ProtectedRoute>}>
+            <Route index element={<DashboardPage />} />
+            <Route path="orders" element={<OrdersPage />} />
+            <Route path="menu" element={<MenuPage />} />
+            <Route path="tables" element={<TablesPage />} />
+            <Route path="staff" element={<StaffPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/manager" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   );
 };
 

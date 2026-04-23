@@ -1,10 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type UserRole = 'super_admin' | 'manager' | 'chef' | 'waiter';
@@ -30,6 +23,8 @@ export interface UserProfile {
   organization_id: string;
   full_name: string;
   role: UserRole;
+  username: string;
+  email?: string;
   pin_code: string;
   is_active: boolean;
 }

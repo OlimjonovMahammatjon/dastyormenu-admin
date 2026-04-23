@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { supabase, UserProfile, Organization } from '../lib/supabase';
+import { UserProfile, Organization } from '../lib/types';
+import { authService } from '../lib/authService';
 
 interface AuthState {
   user: UserProfile | null;
@@ -9,63 +9,82 @@ interface AuthState {
   setUser: (user: UserProfile | null) => void;
   setOrganization: (org: Organization | null) => void;
   setLoading: (v: boolean) => void;
-  signIn: (email: string, password: string) => Promise<string | null>;
+  signIn: (login: string, password: string) => Promise<string | null>;
   signOut: () => Promise<void>;
   loadProfile: () => Promise<void>;
+  verifyAuth: () => Promise<boolean>;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      organization: null,
-      isLoading: true,
+export const useAuthStore = create<AuthState>()((set) => ({
+  user: null,
+  organization: null,
+  isLoading: true,
 
-      setUser: (user) => set({ user }),
-      setOrganization: (organization) => set({ organization }),
-      setLoading: (isLoading) => set({ isLoading }),
+  setUser: (user) => set({ user }),
+  setOrganization: (organization) => set({ organization }),
+  setLoading: (isLoading) => set({ isLoading }),
 
-      signIn: async (email, password) => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) return error.message;
-        await get().loadProfile();
+  signIn: async (login, password) => {
+    try {
+      const response = await authService.login({ login, password });
+      
+      if (response.success && response.data) {
+        set({ 
+          user: response.data.user, 
+          organization: response.data.organization 
+        });
         return null;
-      },
-
-      signOut: async () => {
-        await supabase.auth.signOut();
-        set({ user: null, organization: null });
-      },
-
-      loadProfile: async () => {
-        set({ isLoading: true });
-        try {
-          const { data: { user: authUser } } = await supabase.auth.getUser();
-          if (!authUser) { set({ user: null, organization: null, isLoading: false }); return; }
-
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', authUser.id)
-            .single();
-
-          if (!profile) { set({ user: null, organization: null, isLoading: false }); return; }
-
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('*')
-            .eq('id', profile.organization_id)
-            .single();
-
-          set({ user: profile, organization: org ?? null, isLoading: false });
-        } catch {
-          set({ isLoading: false });
-        }
-      },
-    }),
-    {
-      name: 'dastyor-auth',
-      partialize: (state) => ({ user: state.user, organization: state.organization }),
+      }
+      
+      return response.error?.message || 'Login yoki parol noto\'g\'ri';
+    } catch (error) {
+      console.error('Login error:', error);
+      return 'Serverga ulanishda xatolik';
     }
-  )
-);
+  },
+
+  signOut: async () => {
+    await authService.logout();
+    set({ user: null, organization: null });
+  },
+
+  loadProfile: async () => {
+    set({ isLoading: true });
+
+    try {
+      // Try to load from localStorage first
+      const stored = authService.getStoredAuth();
+      
+      if (stored) {
+        set({ 
+          user: stored.user, 
+          organization: stored.organization, 
+          isLoading: false 
+        });
+
+        // Verify with API in background
+        if (authService.isAuthenticated()) {
+          const isValid = await authService.verifyAuth();
+          if (!isValid) {
+            set({ user: null, organization: null });
+          } else {
+            // Refresh user data from API
+            const updated = authService.getStoredAuth();
+            if (updated) {
+              set({ user: updated.user, organization: updated.organization });
+            }
+          }
+        }
+      } else {
+        set({ user: null, organization: null, isLoading: false });
+      }
+    } catch (error) {
+      console.error('Load profile error:', error);
+      set({ user: null, organization: null, isLoading: false });
+    }
+  },
+
+  verifyAuth: async () => {
+    return await authService.verifyAuth();
+  },
+}));
