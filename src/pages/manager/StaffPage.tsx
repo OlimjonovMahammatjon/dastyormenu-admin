@@ -9,7 +9,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../lib/toast';
 import { TableSkeleton } from '../../components/UI/LoadingSkeleton';
 import Button from '../../components/UI/Button';
-import { mockUsers } from '../../lib/mockData';
+import { staffService } from '../../lib/staffService';
 
 const staffSchema = z.object({
   full_name: z.string().min(2, "Ism kamida 2 ta belgidan iborat bo'lishi kerak"),
@@ -72,11 +72,37 @@ const StaffFormModal: React.FC<{
   const password = watch('password');
 
   const onSubmit = async (data: StaffFormData) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    success('Xodim muvaffaqiyatli qo\'shildi');
-    onRefetch();
-    onClose();
+    if (!orgId) {
+      toastError('Organization ID topilmadi');
+      return;
+    }
+
+    try {
+      console.log('🔵 Creating staff:', data);
+      
+      const response = await staffService.createStaff({
+        organization: orgId,
+        username: data.username,
+        password: data.password,
+        full_name: data.full_name,
+        role: data.role,
+        pin_code: data.password, // Use password as pin_code
+        is_active: true,
+      });
+
+      if (response.success) {
+        console.log('✅ Staff created:', response.data);
+        success('Xodim muvaffaqiyatli qo\'shildi');
+        onRefetch();
+        onClose();
+      } else {
+        console.error('❌ Staff creation failed:', response.error);
+        toastError(response.error?.message || 'Xodim qo\'shilmadi');
+      }
+    } catch (error) {
+      console.error('❌ Staff creation error:', error);
+      toastError('Xatolik yuz berdi');
+    }
   };
 
   return (
@@ -161,28 +187,73 @@ const StaffPage: React.FC = () => {
   const fetchStaff = useCallback(async () => {
     if (!orgId) return;
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 300));
     
-    const staffList = mockUsers.filter(u => ['chef', 'waiter'].includes(u.role));
-    setStaff(staffList);
-    setLoading(false);
-  }, [orgId]);
+    try {
+      console.log('🔵 Fetching staff...');
+      
+      const response = await staffService.getStaff();
+
+      if (response.success) {
+        const staffData = response.data || [];
+        // Filter only chef and waiter roles
+        const staffList = staffData.filter(u => ['chef', 'waiter'].includes(u.role));
+        
+        console.log('✅ Fetched:', staffList.length, 'staff members');
+        setStaff(staffList);
+      } else {
+        console.error('❌ Fetch error:', response.error);
+        toastError(response.error?.message || 'Ma\'lumotlar yuklanmadi');
+      }
+    } catch (error) {
+      console.error('❌ Fetch exception:', error);
+      toastError('Xatolik yuz berdi');
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId, toastError]);
 
   useEffect(() => { fetchStaff(); }, [fetchStaff]);
 
   const toggleActive = async (id: string, current: boolean) => {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    success(current ? 'Xodim nofaol holatga o\'tkazildi' : 'Xodim faol holatga o\'tkazildi');
-    setStaff(prev => prev.map(s => s.id === id ? { ...s, is_active: !current } : s));
+    try {
+      console.log('🔵 Toggling staff active:', id, 'from', current, 'to', !current);
+      
+      const response = await staffService.toggleActive(id, current);
+      
+      if (response.success) {
+        console.log('✅ Staff active toggled');
+        success(current ? 'Xodim nofaol holatga o\'tkazildi' : 'Xodim faol holatga o\'tkazildi');
+        setStaff(prev => prev.map(s => s.id === id ? { ...s, is_active: !current } : s));
+      } else {
+        console.error('❌ Toggle failed:', response.error);
+        toastError(response.error?.message || 'Xatolik yuz berdi');
+      }
+    } catch (error) {
+      console.error('❌ Toggle exception:', error);
+      toastError('Xatolik yuz berdi');
+    }
   };
 
   const deleteStaff = async (id: string) => {
     if (!confirm('Xodimni butunlay o\'chirib tashlashni xohlaysizmi?')) return;
-    await new Promise(resolve => setTimeout(resolve, 300));
     
-    success('Xodim muvaffaqiyatli o\'chirildi');
-    setStaff(prev => prev.filter(s => s.id !== id));
+    try {
+      console.log('🔵 Deleting staff:', id);
+      
+      const response = await staffService.deleteStaff(id);
+      
+      if (response.success) {
+        console.log('✅ Staff deleted');
+        success('Xodim muvaffaqiyatli o\'chirildi');
+        setStaff(prev => prev.filter(s => s.id !== id));
+      } else {
+        console.error('❌ Delete failed:', response.error);
+        toastError(response.error?.message || 'Xodim o\'chirilmadi');
+      }
+    } catch (error) {
+      console.error('❌ Delete exception:', error);
+      toastError('Xatolik yuz berdi');
+    }
   };
 
   return (

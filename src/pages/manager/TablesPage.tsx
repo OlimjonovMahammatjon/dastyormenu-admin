@@ -7,9 +7,10 @@ import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../lib/toast';
 import { TableSkeleton } from '../../components/UI/LoadingSkeleton';
 import Button from '../../components/UI/Button';
-import { mockTables, mockUsers } from '../../lib/mockData';
+import { tableService } from '../../lib/tableService';
+import { staffService } from '../../lib/staffService';
 
-const QR_BASE_URL = 'https://dastyor.uz/menu';
+const QR_BASE_URL = 'https://dastyormenu-client.vercel.app';
 
 const TablesPage: React.FC = () => {
   const { organization } = useAuthStore();
@@ -27,24 +28,48 @@ const TablesPage: React.FC = () => {
   const fetchTables = useCallback(async () => {
     if (!orgId) return;
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 300));
     
-    const tablesWithWaiter = mockTables.map(t => ({
-      ...t,
-      assigned_waiter: mockUsers.find(u => u.id === t.assigned_waiter_id),
-      orders: [],
-    }));
-    
-    setTables(tablesWithWaiter);
-    setLoading(false);
-  }, [orgId]);
+    try {
+      console.log('🔵 Fetching tables and staff...');
+      
+      const [tablesResponse, staffResponse] = await Promise.all([
+        tableService.getTables(),
+        staffService.getStaff(),
+      ]);
+
+      if (tablesResponse.success && staffResponse.success) {
+        const tablesData = tablesResponse.data || [];
+        const staffData = staffResponse.data || [];
+        
+        // Add waiter info to tables
+        const tablesWithWaiter = tablesData.map(t => ({
+          ...t,
+          assigned_waiter: staffData.find(u => u.id === t.assigned_waiter_id),
+          orders: [],
+        }));
+        
+        console.log('✅ Fetched:', tablesData.length, 'tables,', staffData.length, 'staff');
+        setTables(tablesWithWaiter);
+      } else {
+        const errorMsg = tablesResponse.error?.message || staffResponse.error?.message || 'Ma\'lumotlar yuklanmadi';
+        console.error('❌ Fetch error:', errorMsg);
+        toastError(errorMsg);
+      }
+    } catch (error) {
+      console.error('❌ Fetch exception:', error);
+      toastError('Xatolik yuz berdi');
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId, toastError]);
 
   useEffect(() => { fetchTables(); }, [fetchTables]);
 
   // Generate QR
   useEffect(() => {
     if (!qrModal) return;
-    const url = `${QR_BASE_URL}/${qrModal.qr_code_id}`;
+    // Use table ID for QR code URL (backend doesn't return qr_code_id)
+    const url = `${QR_BASE_URL}/${qrModal.id}`;
     QRCode.toDataURL(url, { width: 300, margin: 2, color: { dark: '#000000', light: '#FFFFFF' } })
       .then(setQrDataUrl);
   }, [qrModal]);
@@ -61,13 +86,17 @@ const TablesPage: React.FC = () => {
     if (!qrDataUrl || !qrModal) return;
     const win = window.open('', '_blank');
     if (!win) return;
+    const orgName = organization?.full_name || organization?.name || 'Dastyor Menu';
+    const qrUrl = `${QR_BASE_URL}/${qrModal.id}`;
+    
     win.document.write(`
       <html><head><title>Stol ${qrModal.table_number} QR</title></head>
       <body style="display:flex;flex-direction:column;align-items:center;padding:20px;font-family:sans-serif">
-        <h2>${organization?.name ?? 'Dastyor'}</h2>
+        <h2>${orgName}</h2>
         <p style="font-size:18px;font-weight:bold">${qrModal.table_number}-stol</p>
         <img src="${qrDataUrl}" style="width:250px;height:250px" />
         <p style="font-size:12px;color:#666;margin-top:8px">Menyu uchun QR kodni skanlang</p>
+        <p style="font-size:10px;color:#999;margin-top:4px">${qrUrl}</p>
       </body></html>
     `);
     win.document.close();
@@ -77,20 +106,67 @@ const TablesPage: React.FC = () => {
   const addTables = async () => {
     if (!orgId || addCount < 1) return;
     setAdding(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
     
-    success(`${addCount} ta stol muvaffaqiyatli qo'shildi`);
-    fetchTables();
-    setShowAddModal(false);
-    setAdding(false);
+    try {
+      console.log('🔵 Adding', addCount, 'tables...');
+      
+      // Get the highest table number
+      const maxTableNumber = tables.length > 0 
+        ? Math.max(...tables.map(t => t.table_number))
+        : 0;
+      
+      // Create tables sequentially
+      const promises = [];
+      for (let i = 1; i <= addCount; i++) {
+        promises.push(
+          tableService.createTable({
+            organization: orgId,
+            table_number: maxTableNumber + i,
+            is_active: true,
+          })
+        );
+      }
+      
+      const results = await Promise.all(promises);
+      const successCount = results.filter(r => r.success).length;
+      
+      if (successCount > 0) {
+        console.log('✅ Created', successCount, 'tables');
+        success(`${successCount} ta stol muvaffaqiyatli qo'shildi`);
+        fetchTables();
+        setShowAddModal(false);
+      } else {
+        console.error('❌ No tables created');
+        toastError('Stollar qo\'shilmadi');
+      }
+    } catch (error) {
+      console.error('❌ Add tables error:', error);
+      toastError('Xatolik yuz berdi');
+    } finally {
+      setAdding(false);
+    }
   };
 
   const deleteTable = async (id: string) => {
     if (!confirm('Stolni butunlay o\'chirib tashlashni xohlaysizmi?')) return;
-    await new Promise(resolve => setTimeout(resolve, 300));
     
-    success('Stol muvaffaqiyatli o\'chirildi');
-    fetchTables();
+    try {
+      console.log('🔵 Deleting table:', id);
+      
+      const response = await tableService.deleteTable(id);
+      
+      if (response.success) {
+        console.log('✅ Table deleted');
+        success('Stol muvaffaqiyatli o\'chirildi');
+        fetchTables();
+      } else {
+        console.error('❌ Delete failed:', response.error);
+        toastError(response.error?.message || 'Stol o\'chirilmadi');
+      }
+    } catch (error) {
+      console.error('❌ Delete exception:', error);
+      toastError('Xatolik yuz berdi');
+    }
   };
 
   return (
@@ -185,7 +261,7 @@ const TablesPage: React.FC = () => {
               )}
 
               <p className="text-xs text-[#A1A1AA] text-center break-all">
-                {QR_BASE_URL}/{qrModal?.qr_code_id}
+                {QR_BASE_URL}/{qrModal?.id}
               </p>
 
               <div className="flex gap-3 w-full">

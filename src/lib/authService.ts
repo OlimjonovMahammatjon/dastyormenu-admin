@@ -14,17 +14,62 @@ class AuthService {
    * Login with username/email and password
    */
   async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
-    const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
+    const response = await apiClient.post<any>('/api/auth/login/', credentials);
     
     if (response.success && response.data) {
-      // Save token to localStorage
-      localStorage.setItem('dastyor_token', response.data.token);
+      console.log('📦 Raw backend response:', response.data);
+      
+      // Handle nested user structure from backend
+      const userData = response.data.user?.user || response.data.user;
+      const organizationData = response.data.user?.organization || response.data.organization;
+      
+      console.log('👤 User data:', userData);
+      console.log('🏢 Organization data:', organizationData);
+      
+      // Transform to expected format
+      const transformedData: LoginResponse = {
+        access_token: response.data.access_token,
+        refresh_token: response.data.refresh_token,
+        user: {
+          id: userData.id || response.data.user?.id,
+          username: userData.username,
+          email: userData.email,
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          role: response.data.user?.role || 'manager',
+          is_active: response.data.user?.is_active ?? true,
+          created_at: response.data.user?.created_at,
+          updated_at: response.data.user?.updated_at,
+          full_name: response.data.user?.full_name || `${userData.first_name} ${userData.last_name}`,
+        },
+        organization: {
+          id: typeof organizationData === 'string' ? organizationData : organizationData?.id,
+          full_name: response.data.user?.full_name || `${userData.first_name} ${userData.last_name}`,
+          role: response.data.user?.role || 'manager',
+          is_active: response.data.user?.is_active ?? true,
+          created_at: response.data.user?.created_at,
+          updated_at: response.data.user?.updated_at,
+        }
+      };
+      
+      console.log('✅ Transformed data:', transformedData);
+      
+      // Save tokens to sessionStorage
+      sessionStorage.setItem('dastyor_token', transformedData.access_token);
+      sessionStorage.setItem('dastyor_refresh_token', transformedData.refresh_token);
       
       // Save user and organization data
-      localStorage.setItem('dastyor_auth', JSON.stringify({
-        user: response.data.user,
-        organization: response.data.organization,
+      sessionStorage.setItem('dastyor_auth', JSON.stringify({
+        user: transformedData.user,
+        organization: transformedData.organization,
       }));
+      
+      console.log('💾 Data saved to sessionStorage');
+      
+      return {
+        success: true,
+        data: transformedData
+      };
     }
     
     return response;
@@ -36,12 +81,12 @@ class AuthService {
   async logout(): Promise<void> {
     try {
       // Call logout endpoint (optional, for server-side cleanup)
-      await apiClient.post('/auth/logout');
+      await apiClient.post('/api/auth/logout/');
     } catch (error) {
       // Ignore errors on logout
       console.error('Logout error:', error);
     } finally {
-      // Always clear local storage
+      // Always clear session storage
       this.clearAuthData();
     }
   }
@@ -50,10 +95,10 @@ class AuthService {
    * Refresh access token
    */
   async refreshToken(): Promise<ApiResponse<RefreshTokenResponse>> {
-    const response = await apiClient.post<RefreshTokenResponse>('/auth/refresh');
+    const response = await apiClient.post<RefreshTokenResponse>('/api/auth/refresh/');
     
     if (response.success && response.data) {
-      localStorage.setItem('dastyor_token', response.data.token);
+      sessionStorage.setItem('dastyor_token', response.data.access_token);
     }
     
     return response;
@@ -63,7 +108,7 @@ class AuthService {
    * Get current user profile
    */
   async getCurrentUser(): Promise<ApiResponse<MeResponse>> {
-    return apiClient.get('/auth/me');
+    return apiClient.get('/api/auth/me/');
   }
 
   /**
@@ -77,7 +122,7 @@ class AuthService {
     
     if (response.success && response.data) {
       // Update stored user data
-      localStorage.setItem('dastyor_auth', JSON.stringify({
+      sessionStorage.setItem('dastyor_auth', JSON.stringify({
         user: response.data.user,
         organization: response.data.organization,
       }));
@@ -93,7 +138,7 @@ class AuthService {
    * Get stored token
    */
   getToken(): string | null {
-    return localStorage.getItem('dastyor_token');
+    return sessionStorage.getItem('dastyor_token');
   }
 
   /**
@@ -101,7 +146,7 @@ class AuthService {
    */
   getStoredAuth(): { user: UserProfile; organization: Organization } | null {
     try {
-      const stored = localStorage.getItem('dastyor_auth');
+      const stored = sessionStorage.getItem('dastyor_auth');
       if (!stored) return null;
       return JSON.parse(stored);
     } catch {
@@ -113,8 +158,10 @@ class AuthService {
    * Clear all auth data from storage
    */
   clearAuthData(): void {
-    localStorage.removeItem('dastyor_token');
-    localStorage.removeItem('dastyor_auth');
+    sessionStorage.removeItem('dastyor_token');
+    sessionStorage.removeItem('dastyor_refresh_token');
+    sessionStorage.removeItem('dastyor_auth');
+    sessionStorage.removeItem('dastyor_saved_login');
   }
 
   /**

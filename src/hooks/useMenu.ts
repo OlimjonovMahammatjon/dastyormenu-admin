@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Menu, Category } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
-import { mockMenus, mockCategories } from '../lib/mockData';
-
-let localMenus = [...mockMenus];
-let localCategories = [...mockCategories];
+import { menuService } from '../lib/menuService';
+import { categoryService } from '../lib/categoryService';
 
 export function useMenu() {
   const { organization } = useAuthStore();
@@ -19,17 +17,35 @@ export function useMenu() {
     setError(null);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log('🔵 Fetching menus and categories...');
       
-      const menusWithCategory = localMenus.map(menu => ({
-        ...menu,
-        category: localCategories.find(c => c.id === menu.category_id),
-      }));
+      const [menusResponse, categoriesResponse] = await Promise.all([
+        menuService.getMenus(),
+        categoryService.getCategories(),
+      ]);
 
-      setMenus(menusWithCategory);
-      setCategories(localCategories);
+      if (menusResponse.success && categoriesResponse.success) {
+        const menusData = menusResponse.data || [];
+        const categoriesData = categoriesResponse.data || [];
+        
+        // Add category object to each menu
+        const menusWithCategory = menusData.map(menu => ({
+          ...menu,
+          category: categoriesData.find(c => c.id === menu.category_id),
+        }));
+
+        console.log('✅ Fetched:', menusData.length, 'menus,', categoriesData.length, 'categories');
+        setMenus(menusWithCategory);
+        setCategories(categoriesData);
+      } else {
+        const errorMsg = menusResponse.error?.message || categoriesResponse.error?.message || 'Ma\'lumotlar yuklanmadi';
+        console.error('❌ Fetch error:', errorMsg);
+        setError(errorMsg);
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Xatolik yuz berdi');
+      const errorMsg = e instanceof Error ? e.message : 'Xatolik yuz berdi';
+      console.error('❌ Fetch exception:', e);
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -38,28 +54,49 @@ export function useMenu() {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const toggleAvailability = async (menuId: string, current: boolean): Promise<string | null> => {
-    await new Promise(resolve => setTimeout(resolve, 200));
+    console.log('🔵 Toggling availability:', menuId, 'from', current, 'to', !current);
     
-    const index = localMenus.findIndex(m => m.id === menuId);
-    if (index !== -1) {
-      localMenus[index] = { ...localMenus[index], is_available: !current };
-      setMenus(prev => prev.map(m => m.id === menuId ? { ...m, is_available: !current } : m));
+    try {
+      const response = await menuService.toggleAvailability(menuId, current);
+      
+      if (response.success) {
+        console.log('✅ Availability toggled');
+        setMenus(prev => prev.map(m => m.id === menuId ? { ...m, is_available: !current } : m));
+        return null;
+      } else {
+        console.error('❌ Toggle failed:', response.error);
+        return response.error?.message || 'Xatolik yuz berdi';
+      }
+    } catch (e) {
+      console.error('❌ Toggle exception:', e);
+      return e instanceof Error ? e.message : 'Xatolik yuz berdi';
     }
-    return null;
   };
 
   const deleteMenu = async (menuId: string): Promise<string | null> => {
-    await new Promise(resolve => setTimeout(resolve, 200));
+    console.log('🔵 Deleting menu:', menuId);
     
-    localMenus = localMenus.filter(m => m.id !== menuId);
-    setMenus(prev => prev.filter(m => m.id !== menuId));
-    return null;
+    try {
+      const response = await menuService.deleteMenu(menuId);
+      
+      if (response.success) {
+        console.log('✅ Menu deleted');
+        setMenus(prev => prev.filter(m => m.id !== menuId));
+        return null;
+      } else {
+        console.error('❌ Delete failed:', response.error);
+        return response.error?.message || 'Xatolik yuz berdi';
+      }
+    } catch (e) {
+      console.error('❌ Delete exception:', e);
+      return e instanceof Error ? e.message : 'Xatolik yuz berdi';
+    }
   };
 
   const uploadImage = async (file: File): Promise<string | null> => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // Mock image URL
-    return `https://via.placeholder.com/400x300?text=${encodeURIComponent(file.name)}`;
+    console.log('🔵 Image will be uploaded with menu creation');
+    // Image will be uploaded as part of menu creation FormData
+    return URL.createObjectURL(file); // Return preview URL for now
   };
 
   return { menus, categories, loading, error, refetch: fetchAll, toggleAvailability, deleteMenu, uploadImage };

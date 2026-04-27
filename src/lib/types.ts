@@ -7,35 +7,48 @@ export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 
 export interface Organization {
   id: string;
-  name: string;
-  logo_url: string | null;
-  address: string | null;
-  phone: string | null;
-  subscription_plan: SubscriptionPlan;
-  subscription_status: string;
-  subscription_expires_at: string | null;
-  trial_ends_at: string | null;
-  monthly_price: number;
+  name?: string;
+  full_name?: string;
+  logo_url?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  subscription_plan?: SubscriptionPlan;
+  subscription_status?: string;
+  subscription_expires_at?: string | null;
+  trial_ends_at?: string | null;
+  monthly_price?: number;
+  role?: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface UserProfile {
   id: string;
-  organization_id: string;
-  full_name: string;
+  organization_id?: string;
+  full_name?: string;
   role: UserRole;
   username: string;
   email?: string;
-  pin_code: string;
+  first_name?: string;
+  last_name?: string;
+  pin_code?: string;
   is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Category {
   id: string;
-  organization_id: string;
+  organization_id?: string;
+  organization?: string;
   name: string;
   icon: string;
   sort_order: number;
   is_active: boolean;
+  items_count?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Menu {
@@ -55,13 +68,16 @@ export interface Menu {
 
 export interface Table {
   id: string;
-  organization_id: string;
+  organization_id?: string;
   table_number: number;
-  qr_code_id: string;
-  assigned_waiter_id: string | null;
+  qr_code_id?: string; // Optional, may not be returned by backend
+  assigned_waiter_id?: string | null;
+  waiter_name?: string | null;
   is_active: boolean;
   assigned_waiter?: UserProfile;
   orders?: Order[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Order {

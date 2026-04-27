@@ -8,7 +8,6 @@ import { Order, OrderStatus, formatPrice } from '../../lib/types';
 import { useAuthStore } from '../../store/authStore';
 import StatusBadge from '../../components/UI/StatusBadge';
 import { TableSkeleton } from '../../components/UI/LoadingSkeleton';
-import { mockOrders } from '../../lib/mockData';
 
 const STATUS_TABS: { key: OrderStatus | 'all'; label: string }[] = [
   { key: 'all',       label: 'Hammasi' },

@@ -11,7 +11,8 @@ import { Menu, Category, formatPrice, toTiyin } from '../../lib/types';
 import { useAuthStore } from '../../store/authStore';
 import { GridSkeleton } from '../../components/UI/LoadingSkeleton';
 import Button from '../../components/UI/Button';
-import { mockCategories } from '../../lib/mockData';
+import { categoryService } from '../../lib/categoryService';
+import { menuService } from '../../lib/menuService';
 
 // ─── Form schema ──────────────────────────────────────────────────────────────
 const menuSchema = z.object({
@@ -40,24 +41,66 @@ const CategoryModal: React.FC<{
   const [saving, setSaving] = useState(false);
 
   const addCategory = async () => {
-    if (!name.trim()) return;
-    setSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
+    if (!name.trim()) {
+      toastError('Kategoriya nomini kiriting');
+      return;
+    }
     
-    // Mock add
-    success('Kategoriya muvaffaqiyatli qo\'shildi');
-    setName('');
-    setIcon('🍽️');
-    onRefetch();
-    setSaving(false);
+    if (!orgId) {
+      toastError('Organization ID topilmadi');
+      return;
+    }
+
+    setSaving(true);
+    console.log('🔵 Creating category:', { organization: orgId, name, icon });
+    
+    try {
+      const response = await categoryService.createCategory({
+        organization: orgId,
+        name: name.trim(),
+        icon: icon || '🍽️',
+        sort_order: categories.length + 1,
+        is_active: true,
+      });
+
+      if (response.success) {
+        console.log('✅ Category created:', response.data);
+        success('Kategoriya muvaffaqiyatli qo\'shildi');
+        setName('');
+        setIcon('🍽️');
+        onRefetch();
+      } else {
+        console.error('❌ Category creation failed:', response.error);
+        toastError(response.error?.message || 'Kategoriya qo\'shilmadi');
+      }
+    } catch (error) {
+      console.error('❌ Category creation error:', error);
+      toastError('Xatolik yuz berdi');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const deleteCategory = async (id: string) => {
-    await new Promise(resolve => setTimeout(resolve, 300));
+    if (!confirm('Kategoriyani o\'chirib tashlashni xohlaysizmi?')) return;
     
-    // Mock delete
-    success('Kategoriya o\'chirildi');
-    onRefetch();
+    console.log('🔵 Deleting category:', id);
+    
+    try {
+      const response = await categoryService.deleteCategory(id);
+      
+      if (response.success) {
+        console.log('✅ Category deleted');
+        success('Kategoriya o\'chirildi');
+        onRefetch();
+      } else {
+        console.error('❌ Category deletion failed:', response.error);
+        toastError(response.error?.message || 'Kategoriya o\'chirilmadi');
+      }
+    } catch (error) {
+      console.error('❌ Category deletion error:', error);
+      toastError('Xatolik yuz berdi');
+    }
   };
 
   return (
@@ -116,6 +159,7 @@ const MenuFormModal: React.FC<{
   const { success, error: toastError } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(editItem?.image_url ?? null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
   const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<MenuFormData>({
@@ -136,20 +180,81 @@ const MenuFormModal: React.FC<{
     if (!file) return;
     setUploading(true);
     const url = await uploadImage(file);
-    if (url) setImageUrl(url);
-    else toastError('Rasm yuklanmadi');
+    if (url) {
+      setImageUrl(url);
+      setImageFile(file); // Store the actual file for upload
+    } else {
+      toastError('Rasm yuklanmadi');
+    }
     setUploading(false);
   };
 
   const onSubmit = async (data: MenuFormData) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    if (!orgId) {
+      toastError('Organization ID topilmadi');
+      return;
+    }
+
+    console.log('🔵 Submitting menu:', data);
     
-    // Mock save
-    success(editItem ? 'Taom yangilandi' : 'Taom qo\'shildi');
-    reset();
-    setImageUrl(null);
-    onRefetch();
-    onClose();
+    try {
+      if (editItem) {
+        // Update existing menu
+        const response = await menuService.updateMenu(editItem.id, {
+          category: data.category_id,
+          name: data.name,
+          description: data.description || '',
+          price: Math.round(data.price_som * 100), // Convert to tiyin
+          cook_time_minutes: data.cook_time_minutes,
+          ingredients: data.ingredients || '',
+          is_available: data.is_available,
+          image_url: imageFile || imageUrl || undefined,
+        });
+
+        if (response.success) {
+          console.log('✅ Menu updated:', response.data);
+          success('Taom yangilandi');
+          reset();
+          setImageUrl(null);
+          setImageFile(null);
+          onRefetch();
+          onClose();
+        } else {
+          console.error('❌ Menu update failed:', response.error);
+          toastError(response.error?.message || 'Taom yangilanmadi');
+        }
+      } else {
+        // Create new menu
+        const response = await menuService.createMenu({
+          organization: orgId,
+          category: data.category_id,
+          name: data.name,
+          description: data.description || '',
+          price: Math.round(data.price_som * 100), // Convert to tiyin
+          cook_time_minutes: data.cook_time_minutes,
+          ingredients: data.ingredients || '',
+          is_available: data.is_available,
+          sort_order: 0,
+          image_url: imageFile || undefined,
+        });
+
+        if (response.success) {
+          console.log('✅ Menu created:', response.data);
+          success('Taom qo\'shildi');
+          reset();
+          setImageUrl(null);
+          setImageFile(null);
+          onRefetch();
+          onClose();
+        } else {
+          console.error('❌ Menu creation failed:', response.error);
+          toastError(response.error?.message || 'Taom qo\'shilmadi');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Menu submission error:', error);
+      toastError('Xatolik yuz berdi');
+    }
   };
 
   return (

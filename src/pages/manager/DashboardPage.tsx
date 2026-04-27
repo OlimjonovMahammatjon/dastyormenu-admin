@@ -10,7 +10,6 @@ import { useTodayStats } from '../../hooks/useOrders';
 import { Order, formatPrice } from '../../lib/types';
 import { useAuthStore } from '../../store/authStore';
 import { Skeleton } from '../../components/UI/LoadingSkeleton';
-import { mockOrders, mockOrderItems, mockMenus, mockTables } from '../../lib/mockData';
 
 // ─── Weekly chart data ────────────────────────────────────────────────────────
 const DAYS = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];

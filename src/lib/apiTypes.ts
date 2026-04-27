@@ -19,13 +19,14 @@ export interface ApiError {
 
 // Auth Responses
 export interface LoginResponse {
-  token: string;
+  access_token: string;
+  refresh_token: string;
   user: UserProfile;
   organization: Organization;
 }
 
 export interface RefreshTokenResponse {
-  token: string;
+  access_token: string;
 }
 
 export interface MeResponse {
@@ -42,13 +43,10 @@ export interface PaginationParams {
 }
 
 export interface PaginatedResponse<T> {
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
 }
 
 // Common Response Messages

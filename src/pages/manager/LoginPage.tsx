@@ -28,7 +28,7 @@ const LoginPage: React.FC = () => {
 
   // Load saved credentials on mount
   React.useEffect(() => {
-    const savedLogin = localStorage.getItem('dastyor_saved_login');
+    const savedLogin = sessionStorage.getItem('dastyor_saved_login');
     if (savedLogin) {
       setValue('login', savedLogin);
       setRememberMe(true);
@@ -42,19 +42,29 @@ const LoginPage: React.FC = () => {
   const onSubmit = async (data: FormData) => {
     setApiError(null);
     
+    console.log('🔵 Login attempt:', data.login);
+    
     const err = await signIn(data.login, data.password);
     if (err) {
+      console.error('❌ Login failed:', err);
       setApiError(err);
       toastError(err);
     } else {
+      console.log('✅ Login successful');
+      
       // Save login if remember me is checked
       if (rememberMe) {
-        localStorage.setItem('dastyor_saved_login', data.login);
+        sessionStorage.setItem('dastyor_saved_login', data.login);
       } else {
-        localStorage.removeItem('dastyor_saved_login');
+        sessionStorage.removeItem('dastyor_saved_login');
       }
       
-      navigate('/manager');
+      toastSuccess('Muvaffaqiyatli kirdingiz!');
+      
+      // Navigate after a short delay to show success message
+      setTimeout(() => {
+        navigate('/manager');
+      }, 500);
     }
   };
 

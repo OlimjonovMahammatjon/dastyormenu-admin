@@ -1,7 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Order, OrderStatus } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
-import { mockOrders, mockOrderItems, mockTables, mockUsers } from '../lib/mockData';
+
+// Temporary mock data until orders API is integrated
+const mockOrders: Order[] = [];
+const mockOrderItems: any[] = [];
+const mockTables: any[] = [];
+const mockUsers: any[] = [];
 
 interface UseOrdersOptions {
   status?: OrderStatus | 'all';
