@@ -54,17 +54,17 @@ class AuthService {
       
       console.log('✅ Transformed data:', transformedData);
       
-      // Save tokens to sessionStorage
-      sessionStorage.setItem('dastyor_token', transformedData.access_token);
-      sessionStorage.setItem('dastyor_refresh_token', transformedData.refresh_token);
+      // Save tokens to localStorage (persistent across sessions and updates)
+      localStorage.setItem('dastyor_token', transformedData.access_token);
+      localStorage.setItem('dastyor_refresh_token', transformedData.refresh_token);
       
       // Save user and organization data
-      sessionStorage.setItem('dastyor_auth', JSON.stringify({
+      localStorage.setItem('dastyor_auth', JSON.stringify({
         user: transformedData.user,
         organization: transformedData.organization,
       }));
       
-      console.log('💾 Data saved to sessionStorage');
+      console.log('💾 Data saved to localStorage');
       
       return {
         success: true,
@@ -98,7 +98,7 @@ class AuthService {
     const response = await apiClient.post<RefreshTokenResponse>('/api/auth/refresh/');
     
     if (response.success && response.data) {
-      sessionStorage.setItem('dastyor_token', response.data.access_token);
+      localStorage.setItem('dastyor_token', response.data.access_token);
     }
     
     return response;
@@ -118,27 +118,40 @@ class AuthService {
     const token = this.getToken();
     if (!token) return false;
 
-    const response = await this.getCurrentUser();
-    
-    if (response.success && response.data) {
-      // Update stored user data
-      sessionStorage.setItem('dastyor_auth', JSON.stringify({
-        user: response.data.user,
-        organization: response.data.organization,
-      }));
-      return true;
+    try {
+      const response = await this.getCurrentUser();
+      
+      if (response.success && response.data) {
+        // Update stored user data
+        localStorage.setItem('dastyor_auth', JSON.stringify({
+          user: response.data.user,
+          organization: response.data.organization,
+        }));
+        return true;
+      }
+      
+      // Only clear auth data if it's an authentication error (401)
+      if (response.error?.status === 401) {
+        console.log('❌ Token invalid (401), clearing auth data');
+        this.clearAuthData();
+        return false;
+      }
+      
+      // For other errors (network, 500, etc), keep the token
+      console.log('⚠️ Verification failed but keeping auth data:', response.error);
+      return true; // Keep user logged in on network errors
+    } catch (error) {
+      // Network error - don't clear auth data
+      console.log('⚠️ Network error during verification, keeping auth data');
+      return true; // Keep user logged in
     }
-    
-    // Token is invalid, clear auth data
-    this.clearAuthData();
-    return false;
   }
 
   /**
    * Get stored token
    */
   getToken(): string | null {
-    return sessionStorage.getItem('dastyor_token');
+    return localStorage.getItem('dastyor_token');
   }
 
   /**
@@ -146,7 +159,7 @@ class AuthService {
    */
   getStoredAuth(): { user: UserProfile; organization: Organization } | null {
     try {
-      const stored = sessionStorage.getItem('dastyor_auth');
+      const stored = localStorage.getItem('dastyor_auth');
       if (!stored) return null;
       return JSON.parse(stored);
     } catch {
@@ -158,10 +171,10 @@ class AuthService {
    * Clear all auth data from storage
    */
   clearAuthData(): void {
-    sessionStorage.removeItem('dastyor_token');
-    sessionStorage.removeItem('dastyor_refresh_token');
-    sessionStorage.removeItem('dastyor_auth');
-    sessionStorage.removeItem('dastyor_saved_login');
+    localStorage.removeItem('dastyor_token');
+    localStorage.removeItem('dastyor_refresh_token');
+    localStorage.removeItem('dastyor_auth');
+    localStorage.removeItem('dastyor_saved_login');
   }
 
   /**

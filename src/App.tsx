@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { ToastProvider } from './lib/toast';
+import { usePWAUpdate } from './lib/pwaUpdate';
+import PWAUpdatePrompt from './components/UI/PWAUpdatePrompt';
 import ManagerLayout from './components/layout/ManagerLayout';
 import LoginPage from './pages/manager/LoginPage';
 import DashboardPage from './pages/manager/DashboardPage';
@@ -27,10 +29,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const App: React.FC = () => {
   const { user, loadProfile } = useAuthStore();
+  const { needRefresh, updateApp, closePrompt } = usePWAUpdate();
 
   useEffect(() => {
+    console.log('🚀 App mounted, loading profile...');
     loadProfile();
-  }, [loadProfile]);
+  }, []); // Empty dependency array - run only once on mount
 
   return (
     <ToastProvider>
@@ -49,6 +53,13 @@ const App: React.FC = () => {
 
           <Route path="*" element={<Navigate to="/manager" replace />} />
         </Routes>
+        
+        {/* PWA Update Prompt */}
+        <PWAUpdatePrompt
+          show={needRefresh}
+          onUpdate={updateApp}
+          onClose={closePrompt}
+        />
       </BrowserRouter>
     </ToastProvider>
   );

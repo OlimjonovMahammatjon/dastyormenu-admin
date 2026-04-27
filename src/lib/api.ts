@@ -17,7 +17,7 @@ class ApiClient {
   }
 
   private getAuthToken(): string | null {
-    return sessionStorage.getItem('dastyor_token');
+    return localStorage.getItem('dastyor_token');
   }
 
   private async request<T>(
