@@ -3,6 +3,7 @@ import { Menu, Category } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
 import { menuService } from '../lib/menuService';
 import { categoryService } from '../lib/categoryService';
+import { resizeImage, fileToBase64 } from '../lib/imageUploadService';
 
 export function useMenu() {
   const { organization } = useAuthStore();
@@ -28,11 +29,14 @@ export function useMenu() {
         const menusData = menusResponse.data || [];
         const categoriesData = categoriesResponse.data || [];
         
-        // Add category object to each menu
-        const menusWithCategory = menusData.map(menu => ({
-          ...menu,
-          category: categoriesData.find(c => c.id === menu.category_id),
-        }));
+        // Add category object to each menu and log image URLs
+        const menusWithCategory = menusData.map(menu => {
+          console.log('🖼️ Menu image:', menu.name, '→', menu.image_url);
+          return {
+            ...menu,
+            category: categoriesData.find(c => c.id === menu.category_id),
+          };
+        });
 
         console.log('✅ Fetched:', menusData.length, 'menus,', categoriesData.length, 'categories');
         setMenus(menusWithCategory);
@@ -94,9 +98,21 @@ export function useMenu() {
   };
 
   const uploadImage = async (file: File): Promise<string | null> => {
-    console.log('🔵 Image will be uploaded with menu creation');
-    // Image will be uploaded as part of menu creation FormData
-    return URL.createObjectURL(file); // Return preview URL for now
+    console.log('🔵 Converting image to base64 for preview...');
+    
+    try {
+      // Rasmni kichraytirish (optimization)
+      const resizedFile = await resizeImage(file, 800, 800, 0.85);
+      
+      // Base64 ga o'girish (preview uchun)
+      const base64 = await fileToBase64(resizedFile);
+      console.log('✅ Image converted to base64 (preview ready)');
+      
+      return base64;
+    } catch (error) {
+      console.error('❌ Image conversion error:', error);
+      return null;
+    }
   };
 
   return { menus, categories, loading, error, refetch: fetchAll, toggleAvailability, deleteMenu, uploadImage };

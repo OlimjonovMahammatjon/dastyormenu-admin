@@ -4,6 +4,16 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://dastyormenu-backend-production.up.railway.app',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path,
+      }
+    }
+  },
   plugins: [
     react(),
     VitePWA({

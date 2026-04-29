@@ -140,3 +140,25 @@ export function formatPrice(tiyin: number): string {
 export function toTiyin(som: number): number {
   return Math.round(som * 100);
 }
+
+/** Rasm URL'ini to'g'ri formatlash */
+export function getImageUrl(imageUrl: string | null | undefined): string | null {
+  if (!imageUrl) return null;
+  
+  // Agar to'liq URL bo'lsa, o'zini qaytarish
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  
+  // Agar nisbiy yo'l bo'lsa, backend URL bilan birlashtirish
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+  
+  // Agar baseUrl bo'sh bo'lsa (proxy ishlatilayotgan bo'lsa)
+  if (!baseUrl) {
+    // Proxy orqali
+    return imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+  }
+  
+  // To'liq URL yaratish
+  return imageUrl.startsWith('/') ? `${baseUrl}${imageUrl}` : `${baseUrl}/${imageUrl}`;
+}

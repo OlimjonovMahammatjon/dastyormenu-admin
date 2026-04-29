@@ -5,12 +5,11 @@ import { PaginatedResponse } from './apiTypes';
 import { Menu } from './types';
 
 export interface CreateMenuRequest {
-  organization: string;
-  category: string;
   name: string;
   description?: string;
-  image_url?: File | string;
+  image?: File | string; // Changed from image_url to image
   price: number; // tiyin
+  category: string;
   cook_time_minutes: number;
   ingredients?: string;
   is_available?: boolean;
@@ -21,7 +20,7 @@ export interface UpdateMenuRequest {
   category?: string;
   name?: string;
   description?: string;
-  image_url?: File | string;
+  image?: File | string; // Changed from image_url to image
   price?: number; // tiyin
   cook_time_minutes?: number;
   ingredients?: string;
@@ -53,9 +52,8 @@ class MenuService {
   async createMenu(data: CreateMenuRequest): Promise<ApiResponse<Menu>> {
     const formData = new FormData();
     
-    formData.append('organization', data.organization);
-    formData.append('category', data.category);
     formData.append('name', data.name);
+    formData.append('category', data.category);
     formData.append('price', data.price.toString());
     formData.append('cook_time_minutes', data.cook_time_minutes.toString());
     
@@ -64,21 +62,28 @@ class MenuService {
     if (data.is_available !== undefined) formData.append('is_available', data.is_available.toString());
     if (data.sort_order !== undefined) formData.append('sort_order', data.sort_order.toString());
     
-    // Handle image upload
-    if (data.image_url instanceof File) {
-      formData.append('image_url', data.image_url);
-    } else if (typeof data.image_url === 'string' && data.image_url) {
-      formData.append('image_url', data.image_url);
+    // Handle image - backend expects 'image' field with File
+    if (data.image) {
+      if (data.image instanceof File) {
+        console.log('📸 Uploading image file:', data.image.name, data.image.type, data.image.size);
+        formData.append('image', data.image, data.image.name);
+      } else if (typeof data.image === 'string') {
+        console.log('📸 Image URL (string):', data.image);
+        formData.append('image', data.image);
+      }
+    } else {
+      console.log('📸 No image provided');
     }
 
-    console.log('🔵 Creating menu with FormData:', {
-      organization: data.organization,
-      category: data.category,
-      name: data.name,
-      price: data.price,
-      cook_time_minutes: data.cook_time_minutes,
-      has_image: !!data.image_url,
-    });
+    console.log('🔵 Creating menu with FormData');
+    // Log FormData contents
+    for (const [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`  ${key}: [File] ${value.name} (${value.size} bytes)`);
+      } else {
+        console.log(`  ${key}: ${value}`);
+      }
+    }
 
     return apiClient.post('/api/menu/', formData);
   }
@@ -98,11 +103,13 @@ class MenuService {
     if (data.is_available !== undefined) formData.append('is_available', data.is_available.toString());
     if (data.sort_order !== undefined) formData.append('sort_order', data.sort_order.toString());
     
-    // Handle image upload
-    if (data.image_url instanceof File) {
-      formData.append('image_url', data.image_url);
-    } else if (typeof data.image_url === 'string' && data.image_url) {
-      formData.append('image_url', data.image_url);
+    // Handle image
+    if (data.image) {
+      if (data.image instanceof File) {
+        formData.append('image', data.image, data.image.name);
+      } else if (typeof data.image === 'string') {
+        formData.append('image', data.image);
+      }
     }
 
     return apiClient.patch(`/api/menu/${id}/`, formData);
