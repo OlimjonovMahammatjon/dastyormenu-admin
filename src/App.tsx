@@ -12,7 +12,7 @@ import MenuPage from './pages/manager/MenuPage';
 import TablesPage from './pages/manager/TablesPage';
 import StaffPage from './pages/manager/StaffPage';
 import SettingsPage from './pages/manager/SettingsPage';
-
+// test uchun yozyapman
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuthStore();
 

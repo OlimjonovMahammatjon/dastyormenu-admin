@@ -4,7 +4,6 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Building2, CreditCard, Lock, Upload, X } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { useToast } from '../../lib/toast';
 import Button from '../../components/UI/Button';

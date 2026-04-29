@@ -1,5 +1,5 @@
 import React from 'react';
-import { OrderStatus } from '../../lib/supabase';
+import { OrderStatus } from '../../lib/types';
 
 interface StatusBadgeProps {
   status: OrderStatus;
