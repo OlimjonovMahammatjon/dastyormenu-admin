@@ -4,7 +4,7 @@ import { useAuthStore } from './store/authStore';
 import { ToastProvider } from './lib/toast';
 import { usePWAUpdate } from './lib/pwaUpdate';
 import PWAUpdatePrompt from './components/UI/PWAUpdatePrompt';
-import ManagerLayout from './components/layout/ManagerLayout';
+import ManagerLayout from './components/Layout/ManagerLayout';
 import LoginPage from './pages/manager/LoginPage';
 import DashboardPage from './pages/manager/DashboardPage';
 import OrdersPage from './pages/manager/OrdersPage';
