@@ -99,14 +99,27 @@ export function useMenu() {
 
   const uploadImage = async (file: File): Promise<string | null> => {
     console.log('🔵 Converting image to base64 for preview...');
+    console.log('📸 Original file:', {
+      name: file.name,
+      type: file.type,
+      size: `${(file.size / 1024).toFixed(2)} KB`,
+    });
     
     try {
       // Rasmni kichraytirish (optimization)
+      console.log('🔄 Resizing image...');
       const resizedFile = await resizeImage(file, 800, 800, 0.85);
+      console.log('✅ Image resized:', {
+        name: resizedFile.name,
+        type: resizedFile.type,
+        size: `${(resizedFile.size / 1024).toFixed(2)} KB`,
+      });
       
       // Base64 ga o'girish (preview uchun)
+      console.log('🔄 Converting to base64...');
       const base64 = await fileToBase64(resizedFile);
       console.log('✅ Image converted to base64 (preview ready)');
+      console.log('📏 Base64 length:', base64.length, 'characters');
       
       return base64;
     } catch (error) {

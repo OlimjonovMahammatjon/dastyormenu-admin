@@ -236,11 +236,53 @@ const MenuFormModal: React.FC<{
 
   // Reset form when editItem changes or modal opens
   React.useEffect(() => {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🔄 MODAL STATE CHANGED');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('📊 Modal open:', open);
+    console.log('📊 Edit item:', editItem ? {
+      id: editItem.id,
+      name: editItem.name,
+      category_id: editItem.category_id,
+      price: editItem.price,
+      image_url: editItem.image_url,
+    } : null);
+    
     if (open) {
       if (editItem) {
+        console.log('───────────────────────────────────────────────────────');
+        console.log('📝 LOADING EDIT DATA');
+        console.log('───────────────────────────────────────────────────────');
+        console.log('📄 Menu item:', {
+          id: editItem.id,
+          name: editItem.name,
+          category: editItem.category_id,
+          price_tiyin: editItem.price,
+          price_som: editItem.price / 100,
+          cook_time: editItem.cook_time_minutes,
+          is_available: editItem.is_available,
+          description: editItem.description,
+          ingredients: editItem.ingredients,
+          sort_order: editItem.sort_order,
+        });
+        
+        console.log('🖼️ Processing image URL...');
+        console.log('  Raw image_url:', editItem.image_url);
+        
         const imageUrlToUse = getImageUrl(editItem.image_url);
-        setImageUrl(imageUrlToUse);
+        console.log('  Processed image URL:', imageUrlToUse);
+        
+        if (imageUrlToUse) {
+          console.log('✅ Image URL available - setting preview');
+          setImageUrl(imageUrlToUse);
+        } else {
+          console.log('⚠️ No image URL available');
+          setImageUrl(null);
+        }
+        
         setImageFile(null);
+        console.log('🔄 Resetting form with edit data...');
+        
         reset({
           name: editItem.name,
           category_id: editItem.category_id,
@@ -251,7 +293,15 @@ const MenuFormModal: React.FC<{
           is_available: editItem.is_available,
           sort_order: editItem.sort_order ?? 0,
         });
+        
+        console.log('✅ Edit form loaded successfully');
+        console.log('───────────────────────────────────────────────────────');
       } else {
+        console.log('───────────────────────────────────────────────────────');
+        console.log('➕ NEW MENU FORM');
+        console.log('───────────────────────────────────────────────────────');
+        console.log('🔄 Resetting to default values...');
+        
         setImageUrl(null);
         setImageFile(null);
         reset({ 
@@ -264,17 +314,33 @@ const MenuFormModal: React.FC<{
           is_available: true,
           sort_order: 0,
         });
+        
+        console.log('✅ New form reset successfully');
+        console.log('───────────────────────────────────────────────────────');
       }
+    } else {
+      console.log('🚪 Modal closed');
     }
+    console.log('═══════════════════════════════════════════════════════');
   }, [editItem, open, reset]);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log('❌ No file selected');
+      return;
+    }
+
+    console.log('📸 Image file selected:', {
+      name: file.name,
+      type: file.type,
+      size: `${(file.size / 1024).toFixed(2)} KB`,
+    });
 
     // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!validTypes.includes(file.type)) {
+      console.error('❌ Invalid file type:', file.type);
       toastError('Faqat JPG, PNG, GIF yoki WebP formatdagi rasmlar qabul qilinadi');
       return;
     }
@@ -282,24 +348,24 @@ const MenuFormModal: React.FC<{
     // Validate file size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
+      console.error('❌ File too large:', file.size, 'bytes');
       toastError('Rasm hajmi 5MB dan oshmasligi kerak');
       return;
     }
 
-    console.log('📸 Image selected:', {
-      name: file.name,
-      type: file.type,
-      size: `${(file.size / 1024).toFixed(2)} KB`,
-    });
+    console.log('✅ File validation passed');
+    console.log('🔄 Starting image upload...');
 
     setUploading(true);
     try {
       const url = await uploadImage(file);
       if (url) {
+        console.log('✅ Image preview URL ready:', url.substring(0, 50) + '...');
         setImageUrl(url);
         setImageFile(file);
-        console.log('✅ Image preview ready:', url);
+        console.log('✅ Image state updated - preview should be visible');
       } else {
+        console.error('❌ Upload returned null');
         toastError('Rasm yuklanmadi');
       }
     } catch (error) {
@@ -307,45 +373,99 @@ const MenuFormModal: React.FC<{
       toastError('Rasm yuklashda xatolik');
     } finally {
       setUploading(false);
+      console.log('🏁 Image upload process completed');
     }
   };
 
   const onSubmit = async (data: MenuFormData) => {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('🚀 FORM SUBMITTED');
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('📋 Form data:', {
+      name: data.name,
+      category_id: data.category_id,
+      price_som: data.price_som,
+      cook_time_minutes: data.cook_time_minutes,
+      is_available: data.is_available,
+      description: data.description,
+      ingredients: data.ingredients,
+      sort_order: data.sort_order,
+    });
+    console.log('🖼️ Image state:', {
+      hasImageUrl: !!imageUrl,
+      hasImageFile: !!imageFile,
+      imageUrlPreview: imageUrl ? imageUrl.substring(0, 50) + '...' : null,
+      imageFileName: imageFile?.name,
+      imageFileSize: imageFile ? `${(imageFile.size / 1024).toFixed(2)} KB` : null,
+    });
+    console.log('🏢 Organization ID:', orgId);
+    console.log('✏️ Edit mode:', !!editItem);
+    if (editItem) {
+      console.log('📝 Editing menu:', {
+        id: editItem.id,
+        name: editItem.name,
+        current_image_url: editItem.image_url,
+      });
+    }
+    console.log('═══════════════════════════════════════════════════════');
+    
     if (!orgId) {
+      console.error('❌ Organization ID missing');
       toastError('Organization ID topilmadi');
       return;
     }
 
     // Validate image for new menu
     if (!editItem && !imageFile) {
+      console.error('❌ Image required for new menu');
       toastError('Iltimos, taom rasmini yuklang');
       return;
     }
 
-    console.log('🔵 Submitting menu:', { 
-      ...data, 
-      editMode: !!editItem,
-      hasImage: !!imageFile,
-    });
+    console.log('🔵 Validation passed, preparing API call...');
     
     try {
       if (editItem) {
         // Update existing menu
-        console.log('📝 Updating menu:', editItem.id);
-        const response = await menuService.updateMenu(editItem.id, {
+        console.log('───────────────────────────────────────────────────────');
+        console.log('📝 UPDATE MODE');
+        console.log('───────────────────────────────────────────────────────');
+        console.log('🆔 Menu ID:', editItem.id);
+        
+        const updatePayload = {
           category: data.category_id,
           name: data.name.trim(),
           description: data.description?.trim() || '',
-          price: Math.round(data.price_som * 100), // Convert to tiyin
+          price: Math.round(data.price_som * 100),
           cook_time_minutes: data.cook_time_minutes,
           ingredients: data.ingredients?.trim() || '',
           is_available: data.is_available,
           sort_order: data.sort_order,
           image: imageFile || undefined,
+        };
+        
+        console.log('📦 Update payload:', {
+          category: updatePayload.category,
+          name: updatePayload.name,
+          price: updatePayload.price,
+          cook_time_minutes: updatePayload.cook_time_minutes,
+          is_available: updatePayload.is_available,
+          hasNewImage: !!imageFile,
+          imageFileName: imageFile?.name,
+        });
+        
+        console.log('🌐 Calling menuService.updateMenu...');
+        const response = await menuService.updateMenu(editItem.id, updatePayload);
+
+        console.log('📡 API Response received:', {
+          success: response.success,
+          hasData: !!response.data,
+          hasError: !!response.error,
         });
 
         if (response.success) {
-          console.log('✅ Menu updated successfully:', response.data);
+          console.log('✅ Menu updated successfully');
+          console.log('📄 Updated menu data:', response.data);
           success('Taom muvaffaqiyatli yangilandi');
           reset();
           setImageUrl(null);
@@ -353,26 +473,51 @@ const MenuFormModal: React.FC<{
           onRefetch();
           onClose();
         } else {
-          console.error('❌ Menu update failed:', response.error);
+          console.error('❌ Menu update failed');
+          console.error('🔴 Error details:', response.error);
           toastError(response.error?.message || 'Taom yangilanmadi. Iltimos, qayta urinib ko\'ring');
         }
       } else {
         // Create new menu
-        console.log('➕ Creating new menu with image file');
-        const response = await menuService.createMenu({
+        console.log('───────────────────────────────────────────────────────');
+        console.log('➕ CREATE MODE');
+        console.log('───────────────────────────────────────────────────────');
+        
+        const createPayload = {
           category: data.category_id,
           name: data.name.trim(),
           description: data.description?.trim() || '',
-          price: Math.round(data.price_som * 100), // Convert to tiyin
+          price: Math.round(data.price_som * 100),
           cook_time_minutes: data.cook_time_minutes,
           ingredients: data.ingredients?.trim() || '',
           is_available: data.is_available,
           sort_order: data.sort_order ?? 0,
-          image: imageFile!, // Send actual file
+          image: imageFile!,
+        };
+        
+        console.log('📦 Create payload:', {
+          category: createPayload.category,
+          name: createPayload.name,
+          price: createPayload.price,
+          cook_time_minutes: createPayload.cook_time_minutes,
+          is_available: createPayload.is_available,
+          hasImage: !!imageFile,
+          imageFileName: imageFile?.name,
+          imageFileSize: imageFile ? `${(imageFile.size / 1024).toFixed(2)} KB` : null,
+        });
+        
+        console.log('🌐 Calling menuService.createMenu...');
+        const response = await menuService.createMenu(createPayload);
+
+        console.log('📡 API Response received:', {
+          success: response.success,
+          hasData: !!response.data,
+          hasError: !!response.error,
         });
 
         if (response.success) {
-          console.log('✅ Menu created successfully:', response.data);
+          console.log('✅ Menu created successfully');
+          console.log('📄 Created menu data:', response.data);
           success('Taom muvaffaqiyatli qo\'shildi');
           reset();
           setImageUrl(null);
@@ -380,12 +525,19 @@ const MenuFormModal: React.FC<{
           onRefetch();
           onClose();
         } else {
-          console.error('❌ Menu creation failed:', response.error);
+          console.error('❌ Menu creation failed');
+          console.error('🔴 Error details:', response.error);
           toastError(response.error?.message || 'Taom qo\'shilmadi. Iltimos, qayta urinib ko\'ring');
         }
       }
     } catch (error) {
-      console.error('❌ Menu submission error:', error);
+      console.error('═══════════════════════════════════════════════════════');
+      console.error('💥 EXCEPTION CAUGHT');
+      console.error('═══════════════════════════════════════════════════════');
+      console.error('❌ Error:', error);
+      console.error('❌ Error type:', typeof error);
+      console.error('❌ Error message:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('═══════════════════════════════════════════════════════');
       toastError('Xatolik yuz berdi. Iltimos, qayta urinib ko\'ring');
     }
   };
@@ -418,8 +570,13 @@ const MenuFormModal: React.FC<{
                       src={imageUrl} 
                       alt="preview" 
                       className="w-full h-full object-cover"
+                      onLoad={() => {
+                        console.log('✅ Image preview loaded successfully:', imageUrl.substring(0, 50) + '...');
+                      }}
                       onError={(e) => {
-                        console.error('❌ Image preview error:', imageUrl);
+                        console.error('❌ Image preview load error');
+                        console.error('  Image URL:', imageUrl);
+                        console.error('  Error event:', e);
                         // Fallback to placeholder
                         e.currentTarget.style.display = 'none';
                       }}
@@ -451,7 +608,12 @@ const MenuFormModal: React.FC<{
                 {imageUrl && (
                   <button
                     type="button"
-                    onClick={e => { e.stopPropagation(); setImageUrl(null); setImageFile(null); }}
+                    onClick={e => { 
+                      e.stopPropagation(); 
+                      console.log('🗑️ Removing image preview');
+                      setImageUrl(null); 
+                      setImageFile(null); 
+                    }}
                     className="absolute top-3 right-3 w-8 h-8 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white transition-colors z-10 shadow-lg"
                     title="Rasmni o'chirish"
                   >
@@ -714,8 +876,15 @@ const MenuPage: React.FC = () => {
                     src={getImageUrl(menu.image_url) || ''} 
                     alt={menu.name} 
                     className="w-full h-full object-cover"
+                    onLoad={() => {
+                      console.log('✅ Menu image loaded:', menu.name);
+                    }}
                     onError={(e) => {
-                      console.error('❌ Image load error:', menu.image_url);
+                      console.error('❌ Menu image load error:', {
+                        menu: menu.name,
+                        raw_url: menu.image_url,
+                        processed_url: getImageUrl(menu.image_url),
+                      });
                       e.currentTarget.style.display = 'none';
                       e.currentTarget.parentElement?.querySelector('.fallback-icon')?.classList.remove('hidden');
                     }}

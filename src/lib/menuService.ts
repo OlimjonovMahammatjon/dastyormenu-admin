@@ -92,6 +92,8 @@ class MenuService {
    * Update menu item
    */
   async updateMenu(id: string, data: UpdateMenuRequest): Promise<ApiResponse<Menu>> {
+    console.log('🔵 menuService.updateMenu called:', { id, data });
+    
     const formData = new FormData();
     
     if (data.category) formData.append('category', data.category);
@@ -106,13 +108,30 @@ class MenuService {
     // Handle image
     if (data.image) {
       if (data.image instanceof File) {
+        console.log('📸 Updating with image file:', data.image.name, data.image.type, data.image.size);
         formData.append('image', data.image, data.image.name);
       } else if (typeof data.image === 'string') {
+        console.log('📸 Updating with image URL (string):', data.image);
         formData.append('image', data.image);
+      }
+    } else {
+      console.log('📸 No new image provided for update');
+    }
+
+    console.log('🔵 Updating menu with FormData:');
+    // Log FormData contents
+    for (const [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`  ${key}: [File] ${value.name} (${value.size} bytes)`);
+      } else {
+        console.log(`  ${key}: ${value}`);
       }
     }
 
-    return apiClient.patch(`/api/menu/${id}/`, formData);
+    const response = await apiClient.patch(`/api/menu/${id}/`, formData);
+    console.log('📡 Update response:', response);
+    
+    return response;
   }
 
   /**
