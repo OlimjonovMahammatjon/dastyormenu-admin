@@ -10,6 +10,7 @@ function subscribeTokenRefresh(callback: (token: string) => void) {
   refreshSubscribers.push(callback);
 }
 
+
 function onTokenRefreshed(token: string) {
   refreshSubscribers.forEach(callback => callback(token));
   refreshSubscribers = [];
@@ -50,7 +51,7 @@ export async function handleAuthError(response: Response): Promise<Response> {
     const refreshResponse = await authService.refreshToken();
     
     if (refreshResponse.success && refreshResponse.data) {
-      const newToken = refreshResponse.data.token;
+      const newToken = refreshResponse.data.access_token; // ✅ access_token
       isRefreshing = false;
       onTokenRefreshed(newToken);
 
